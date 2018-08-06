@@ -15,7 +15,7 @@ assembly_info:
   patch: true
   file: AssemblyInfo.cs
   assembly_version: $(GitVersion_AssemblySemVer)
-  assembly_file_version: $(GitVersion_AssemblySemFileVer)
+  assembly_file_version: $(GitVersion_MajorMinorPatch).$(APPVEYOR_BUILD_NUMBER)
   assembly_informational_version: $(GitVersion_InformationalVersion)
   
 #---------------------------------#
@@ -36,26 +36,31 @@ configuration:
   - Release
 
 build:
-  project: EnvRun.sln
+  project: src\EnvRun.sln
+
+after_build:
+  - ps: cd src/EnvRun/bin/Release ; 7z.exe a EnvRun-v$env:GitVersion_MajorMinorPatch.zip EnvRun.exe
 
 #---------------------------------#
 #      packaging artifacts        #
 #---------------------------------#
 
 artifacts:
-  - path: '**\EnvRun.exe'
+  - path: 'src\EnvRun\bin\Release\EnvRun-v$(GitVersion_MajorMinorPatch).zip'
 
 #---------------------------------#
 #     deployment configuration    #
 #---------------------------------#
 deploy:
-  release: EnvRun-v$(appveyor_build_version)
+  tag: $(GitVersion_MajorMinorPatch)
+  release: Product Release of v$(GitVersion_MajorMinorPatch)
   provider: GitHub
   auth_token:
     secure: HYngJp8YBsLRs4xGHt/P0ry3dVuu+FqEWvEJvVv4IOD6gFpxBAsQxz4yPjiy2dKp
-  artifact: EnvRun.exe             # upload EnvRun.exe to release assets
+  artifact: src\EnvRun\bin\Release\EnvRun-v$(GitVersion_MajorMinorPatch).zip
   draft: false
   prerelease: false
+  force_update: true
   on:
     branch: master                 # release from master branch only
     appveyor_repo_tag: true        # deploy on tag push only
