@@ -236,29 +236,32 @@ namespace GriffinPlus.EnvRun
 		/// <param name="line"></param>
 		private void ProcessLine(string line)
 		{
-			var match = sEnvRunCommandRegex.Match(line);
-			if (match.Success)
+			var commandMatches = sEnvRunCommandRegex.Matches(line);
+			if (commandMatches.Count > 0)
 			{
-				string command = match.Groups[1].Value;
-
-				match = sSetVariableCommandRegex.Match(command);
-				if (match.Success)
+				foreach (Match commandMatch in commandMatches)
 				{
-					string name = match.Groups[1].Value;
-					string value = match.Groups[2].Value;
-					mVariables[name] = value;
-					return;
-				}
+					string command = commandMatch.Groups[1].Value;
 
-				match = sResetVariableCommandRegex.Match(command);
-				if (match.Success)
-				{
-					string name = match.Groups[1].Value;
-					mVariables.Remove(name);
-					return;
-				}
+					Match match = sSetVariableCommandRegex.Match(command);
+					if (match.Success)
+					{
+						string name = match.Groups[1].Value;
+						string value = match.Groups[2].Value;
+						mVariables[name] = value;
+						continue;
+					}
 
-				Console.Error.WriteLine("ERROR: Unknown EnvRun command ({0})", command);
+					match = sResetVariableCommandRegex.Match(command);
+					if (commandMatch.Success)
+					{
+						string name = match.Groups[1].Value;
+						mVariables.Remove(name);
+						continue;
+					}
+
+					Console.Error.WriteLine("ERROR: Unknown EnvRun command ({0})", command);
+				}
 			}
 		}
 
