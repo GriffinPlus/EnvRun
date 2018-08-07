@@ -56,8 +56,9 @@ namespace GriffinPlus.EnvRun
 			string databasePath = Environment.GetEnvironmentVariable("ENVRUN_DATABASE");
 			if (string.IsNullOrWhiteSpace(databasePath))
 			{
-				Console.Error.WriteLine("ERROR: The ENVRUN_DATABASE environment variable is not set.");
-				return (int)ExitCode.EnvRunDatabaseVariableNotSet;
+				databasePath = Path.Combine(Environment.CurrentDirectory, "envrun.db");
+				Environment.SetEnvironmentVariable("ENVRUN_DATABASE", databasePath);
+				Console.Out.WriteLine("The ENVRUN_DATABASE environment variable is not set, using {0} instead.", databasePath);
 			}
 
 			// expand environment variables in the database file path
@@ -88,17 +89,21 @@ namespace GriffinPlus.EnvRun
 			Version version = Assembly.GetExecutingAssembly().GetName().Version;
 			writer.WriteLine("  Griffin+ EnvRun v{0}", version);
 			writer.WriteLine("--------------------------------------------------------------------------------");
-			writer.WriteLine("  Executes another application and scans its output (stdout/stderr) for certain");
-			writer.WriteLine("  key expressions instructing EnvRun to maintain a set of environment");
-			writer.WriteLine("  variables for following runs.");
+			writer.WriteLine("  Wraps the execution of other processes and scans their output (stdout/stderr)");
+			writer.WriteLine("  for certain key expressions instructing EnvRun to maintain a set of");
+			writer.WriteLine("  environment variables for following runs.");
 			writer.WriteLine("--------------------------------------------------------------------------------");
 			writer.WriteLine();
 			writer.WriteLine("  USAGE:");
 			writer.WriteLine();
-			writer.WriteLine("  Step 1) Set ENVRUN_DATABASE environment variable to the path of the database file.");
-			writer.WriteLine("  Step 2) Start application: EnvRun.exe <path> <arguments>");
+			writer.WriteLine("  Step 1, optional)");
+			writer.WriteLine("    Set ENVRUN_DATABASE environment variable to the path of the database file.");
+			writer.WriteLine("    If not set, the database (envrun.db) is placed into the working directory.");
 			writer.WriteLine();
-			writer.WriteLine("  The following expressions are recognized in the output:");
+			writer.WriteLine("  Step 2)");
+			writer.WriteLine("    Start applications: EnvRun.exe <path> <arguments>");
+			writer.WriteLine();
+			writer.WriteLine("  The following expressions are recognized in the output streams:");
 			writer.WriteLine("  - @@envrun[set name='<name>' value='<value>']");
 			writer.WriteLine("  - @@envrun[reset name='<name>']");
 			writer.WriteLine();
