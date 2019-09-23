@@ -1,0 +1,73 @@
+trigger:
+- master
+
+pool:
+  vmImage: 'ubuntu-latest'
+
+variables:
+  GOBIN:  '$(GOPATH)/bin' # Go binaries path
+  GOROOT: '/usr/local/go1.11' # Go installation path
+  GOPATH: '$(system.defaultWorkingDirectory)/gopath' # Go workspace path
+  modulePath: '$(GOPATH)/src/github.com/$(build.repository.name)' # Path to the module's code
+
+steps:
+- task: GitVersion@5
+  inputs:
+    runtime: 'core'
+  displayName: 'Determine version number'
+
+- script: set
+  displayName: 'Show environment variables'
+
+- script: |
+    set -e
+    cat >version.go <<EOF
+    package main
+    const version = "$GITVERSION_SEMVER"
+    const fullVersion = "$GITVERSION_INFORMATIONALVERSION"
+    EOF
+  displayName: 'Generate version file for application'
+  
+- script: |
+    set -e
+    mkdir -p '$(GOBIN)'
+    mkdir -p '$(GOPATH)/pkg'
+    mkdir -p '$(modulePath)'
+    shopt -s extglob
+    shopt -s dotglob
+    mv !(gopath) '$(modulePath)'
+    echo '##vso[task.prependpath]$(GOBIN)'
+    echo '##vso[task.prependpath]$(GOROOT)/bin'
+  displayName: 'Set up the Go workspace'
+
+- script: |
+    set -e
+    go version
+    go get -v -t -d ./...
+    if [ -f Gopkg.toml ]; then
+        curl https://raw.githubusercontent.com/golang/dep/master/install.sh | sh
+        dep ensure
+    fi
+  workingDirectory: '$(modulePath)'
+  displayName: 'Get dependencies'
+    
+- script: |
+    while read line; do
+      export GOOS=$(echo "$line" | cut -d'/' -f1)
+      export GOARCH=$(echo "$line" | cut -d'/' -f2)
+      echo "Building with GOOS=$GOOS and GOARCH=$GOARCH..."
+      [[ "$GOOS" = "windows" ]] && EXTENSION=".exe" || EXTENSION=""
+      go build -o "$(Build.ArtifactStagingDirectory)/$GOOS-$GOARCH/envrun${EXTENSION}" .
+    done <targets.txt
+  workingDirectory: '$(modulePath)'
+  displayName: 'Build'
+
+- script: $(Build.ArtifactStagingDirectory)/linux-amd64/envrun || true
+  displayName: 'Print EnvRun usage text'
+  
+- task: PublishBuildArtifacts@1
+  inputs:
+    PathtoPublish: '$(Build.ArtifactStagingDirectory)'
+    ArtifactName: 'drop'
+    publishLocation: 'Container'
+  displayName: 'Publish build artifacts'
