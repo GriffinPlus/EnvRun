@@ -1,5 +1,10 @@
 trigger:
-- master
+  tags:
+    include:
+    - v*
+  branches:
+    include:
+    - master
 
 pool:
   vmImage: 'ubuntu-latest'
@@ -15,9 +20,6 @@ steps:
   inputs:
     runtime: 'core'
   displayName: 'Determine version number'
-
-- script: set
-  displayName: 'Show environment variables'
 
 - script: |
     set -e
@@ -50,7 +52,7 @@ steps:
     fi
   workingDirectory: '$(modulePath)'
   displayName: 'Get dependencies'
-    
+
 - script: |
     while read line; do
       export GOOS=$(echo "$line" | cut -d'/' -f1)
@@ -64,10 +66,39 @@ steps:
 
 - script: $(Build.ArtifactStagingDirectory)/linux-amd64/envrun || true
   displayName: 'Print EnvRun usage text'
-  
+
 - task: PublishBuildArtifacts@1
   inputs:
     PathtoPublish: '$(Build.ArtifactStagingDirectory)'
     ArtifactName: 'drop'
     publishLocation: 'Container'
   displayName: 'Publish build artifacts'
+
+- script: |
+    while read line; do
+      export GOOS=$(echo "$line" | cut -d'/' -f1)
+      export GOARCH=$(echo "$line" | cut -d'/' -f2)
+      cp README.md "$(Build.ArtifactStagingDirectory)/$GOOS-$GOARCH"
+      cp LICENSE "$(Build.ArtifactStagingDirectory)/$GOOS-$GOARCH"
+      pushd "$(Build.ArtifactStagingDirectory)/$GOOS-$GOARCH"
+      zip -r "envrun-v$(GitVersion.SemVer)-$GOOS-$GOARCH.zip" .
+      popd
+    done <targets.txt
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+  workingDirectory: '$(modulePath)'
+  displayName: 'Packing'
+
+- task: GitHubRelease@1
+  displayName: 'Publish to Github Releases'
+  condition: startsWith(variables['Build.SourceBranch'], 'refs/tags/v')
+  inputs:
+    gitHubConnection: 'Github'
+    repositoryName: '$(Build.Repository.Name)'
+    action: 'edit'
+    target: '$(Build.SourceVersion)'
+    tag: '$(Build.SourceBranchName)'
+    title: 'Product Release $(GitVersion.SemVer)'
+    releaseNotesSource: 'inline'
+    assets: '$(Build.ArtifactStagingDirectory)/**/*.zip'
+    changeLogCompareToRelease: 'lastFullRelease'
+    changeLogType: 'commitBased'
