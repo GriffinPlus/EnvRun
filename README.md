@@ -5,12 +5,13 @@
 
 ## Overview
 
-*EnvRun* is a small tool that assists with running processes that need to exchange data via environment variables.
-By default processes are isolated from each other. Child processes inherit environment variables from their parent
-processes, but child processes are not allowed to set environment variables on parent processes. Therefore environment
-variables cannot be passed across processes. *EnvRun* helps to close this gap by wrapping the execution of processes.
-*EnvRun* scans the output (stdout/stderr) of wrapped processes for key expressions that set/reset specific environment
-variables to pass to other processes executed by *EnvRun* afterwards. The following key expressions are recognized:
+*EnvRun* is a small tool written in GO that assists with running processes that need to exchange data via environment
+variables. By default processes are isolated from each other. Child processes inherit environment variables from their
+parent processes, but child processes are not allowed to set environment variables on parent processes. Therefore
+environment variables cannot be passed across processes. *EnvRun* helps to close this gap by wrapping the execution of
+processes. *EnvRun* scans the output (stdout/stderr) of wrapped processes for key expressions that set/reset specific
+environment variables to pass to other processes executed by *EnvRun* afterwards. The following key expressions are
+recognized:
 
 - `@@envrun[set name='<NAME>' value='<VALUE>']` : Sets an environment variable.
 - `@@envrun[reset name='<NAME>']` : Clears a previously set environment variable.
@@ -22,6 +23,25 @@ inherited environment variables. If a regularly inherited environment variable a
 *EnvRun* is particularly useful on build servers that do not support setting environment variables dynamically (like
 [GoCD](https://www.gocd.org/)). That way tools can publish environment variables for other tools by simply printing to
 the console. All tools that should take part in the mechanism must be wrapped by *EnvRun*.
+
+## Releases
+
+*EnvRun* is written in GO which makes it highly portable.
+
+[Downloads](https://github.com/GriffinPlus/EnvRun/releases) are provided for the following combinations of popular
+target operating systems and platforms:
+
+- `linux`
+  - `386`
+  - `amd64`
+  - `arm`
+  - `arm64`
+- `windows`
+  - `386`
+  - `amd64`
+
+If any other target operating system and/or platform is needed and the combination is supported by GO, please open an
+issue and we'll add support for it.
 
 ## Usage
 
