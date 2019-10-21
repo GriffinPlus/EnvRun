@@ -28,16 +28,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	// replace environment variables wrapped in double curly braces, e.g. {{name}}, in arguments
-	for i, arg := range args {
-		matches := expandedVariableRegex.FindAllStringSubmatch(arg, -1)
-		for _, match := range matches {
-			name := match[1]
-			value := os.Getenv(name)
-			args[i] = expandedVariableRegex.ReplaceAllString(arg, value)
-		}
-	}
-
 	// determine the path of the envrun database file
 	dbPath := os.Getenv("ENVRUN_DATABASE")
 	if len(dbPath) == 0 {
@@ -53,6 +43,16 @@ func main() {
 
 	// read envrun database
 	variables := readEnvrunDatabaseFile(dbPath)
+
+	// replace environment variables wrapped in double curly braces, e.g. {{name}}, in arguments
+	for i, arg := range args {
+		matches := expandedVariableRegex.FindAllStringSubmatch(arg, -1)
+		for _, match := range matches {
+			name := match[1]
+			value := variables[name]
+			args[i] = expandedVariableRegex.ReplaceAllString(arg, value)
+		}
+	}
 
 	// run specified application and process stdout and stderr to
 	// detect envrun variable setter patterns
