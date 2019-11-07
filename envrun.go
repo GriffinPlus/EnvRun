@@ -8,6 +8,7 @@ import (
 	"os"
 	"os/exec"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"syscall"
@@ -112,6 +113,13 @@ func readEnvrunDatabaseFile(path string) map[string]string {
 }
 
 func writeEnvrunDatabaseFile(path string, variables map[string]string) {
+
+	// create directory, if it does not exist, yet
+	dir := filepath.Dir(path)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		log.Fatalf("ERROR: %v\n", err)
+	}
 
 	// open file for writing
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
