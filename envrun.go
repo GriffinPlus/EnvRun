@@ -43,7 +43,17 @@ func main() {
 	}
 
 	// read envrun database
-	variables := readEnvrunDatabaseFile(dbPath)
+	// (create empty database file, if it does not exist, yet)
+	variables, err := readEnvrunDatabaseFile(dbPath)
+	if os.IsNotExist(err) {
+		variables = make(map[string]string)
+		err := touchFile(dbPath)
+		if err != nil {
+			log.Fatalf("ERROR: %v\n", err)
+		}
+	} else if err != nil {
+		log.Fatalf("ERROR: %v\n", err)
+	}
 
 	// replace environment variables wrapped in double curly braces, e.g. {{name}}, in arguments
 	for i, arg := range args {
@@ -76,29 +86,29 @@ func main() {
 	}
 
 	// write envrun database
-	writeEnvrunDatabaseFile(dbPath, variables)
+	err = writeEnvrunDatabaseFile(dbPath, variables)
+	if err != nil {
+		log.Fatalf("ERROR: %v\n", err)
+	}
 }
 
-func readEnvrunDatabaseFile(path string) map[string]string {
-
-	variables := make(map[string]string)
+func readEnvrunDatabaseFile(path string) (map[string]string, error) {
 
 	// open file for reading
 	file, err := os.Open(path)
-	if os.IsNotExist(err) {
-		return variables
-	} else if err != nil {
-		log.Fatalf("ERROR: %v\n", err)
+	if err != nil {
+		return nil, err
 	}
 	defer file.Close()
 
 	// read file
+	variables := make(map[string]string)
 	scanner := bufio.NewScanner(file)
 	for lineNo := 1; scanner.Scan(); lineNo++ {
 		line := scanner.Text()
 		match := databaseLineRegex.FindStringSubmatch(line)
 		if len(match) == 0 {
-			log.Fatalf("ERROR: Reading envrun database file failed (line: %d).", lineNo)
+			return nil, fmt.Errorf("Reading envrun database file failed (line: %d)", lineNo)
 		}
 		name := match[1]
 		value := match[2]
@@ -106,25 +116,18 @@ func readEnvrunDatabaseFile(path string) map[string]string {
 	}
 
 	if err := scanner.Err(); err != nil {
-		log.Fatalf("ERROR: %v\n", err)
+		return nil, err
 	}
 
-	return variables
+	return variables, nil
 }
 
-func writeEnvrunDatabaseFile(path string, variables map[string]string) {
-
-	// create directory, if it does not exist, yet
-	dir := filepath.Dir(path)
-	err := os.MkdirAll(dir, os.ModePerm)
-	if err != nil {
-		log.Fatalf("ERROR: %v\n", err)
-	}
+func writeEnvrunDatabaseFile(path string, variables map[string]string) error {
 
 	// open file for writing
 	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE, 0644)
 	if err != nil {
-		log.Fatalf("ERROR: %v\n", err)
+		return err
 	}
 	defer file.Close()
 
@@ -142,6 +145,8 @@ func writeEnvrunDatabaseFile(path string, variables map[string]string) {
 		writer.WriteString(line)
 	}
 	writer.Flush()
+
+	return nil
 }
 
 func processOutputStream(
@@ -179,6 +184,25 @@ func processOutputStream(
 			}
 		}
 	}
+}
+
+func touchFile(path string) error {
+
+	// create directory, if it does not exist, yet
+	dir := filepath.Dir(path)
+	err := os.MkdirAll(dir, os.ModePerm)
+	if err != nil {
+		return err
+	}
+
+	// open file for writing
+	file, err := os.OpenFile(path, os.O_RDWR|os.O_CREATE|os.O_APPEND, 0644)
+	if err != nil {
+		return err
+	}
+	defer file.Close()
+
+	return nil
 }
 
 func printUsage() {
